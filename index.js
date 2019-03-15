@@ -9,6 +9,27 @@ const port = 3000
 
 app.use(morgan('combined'))
 app.use(bodyParser.json())
+
+function sendMessage() {
+	rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messenger_profile?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"get_started": {
+	  	  "payload": "GET_STARTED_PAYLOAD",
+	  	},
+	  	"greeting": [
+	  	  {
+	  	    "locale": "default",
+	  	    "text": "Helps you get used to your bus routes",
+	  	  }
+	  	],
+	  },
+	  json: true // Automatically stringifies the body to JSON
+	})
+
+}
+
 function processMessagingItem(messagingItem) {
 	const { recipient, timestamp, sender, postback} = messagingItem
 	if (postback.payload === 'GET_STARTED_PAYLOAD') {
