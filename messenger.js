@@ -77,9 +77,6 @@ async function sendHomePrompt(recipient, messageText) {
 	  	  "quick_replies":[
 	  	    {
 	  	      "content_type": "location",
-	  	      "title": "Send Location",
-	  	      "payload": "HOME_POSTBACK_PAYLOAD",
-	  	      "image_url": "http://example.com/img/red.png"
 	  	    },
 	  	  ]
 	  	},
@@ -100,11 +97,37 @@ async function sendWorkPrompt(recipient, messageText) {
 	  	  "quick_replies":[
 	  	    {
 	  	      "content_type": "location",
-	  	      "title": "Send Location",
-	  	      "payload": "WORK_POSTBACK_PAYLOAD",
-	  	      "image_url": "http://example.com/img/red.png"
 	  	    },
 	  	  ]
+	  	},
+	  },
+	  json: true,
+	})
+}
+
+async function sendWhenPrompt(recipient, messageText) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "attachment": {
+	  	    "type": "template",
+	  	    "payload": {
+	  	      "template_type": "button",
+	  	      "text":  messageText,
+	  	      "buttons": [
+	  	        {
+	  	          "type": "web_url",
+	  	          "url": `http://localhost:3000/?senderId=${recipient.id}`,
+	  	          "title": "Select",
+	  	          "webview_height_ratio": "Compact",
+	  	        }
+	  	      ]
+	  	    }
+	  	  }
 	  	},
 	  },
 	  json: true,
@@ -132,7 +155,7 @@ async function processMessagingItem(messagingItem) {
 							userSettings.workLat = coordinates.lat
 							userSettings.workLong = coordinates.long
 							await userSettings.save()
-							await sendMessage(sender, "Cool! I will help you get used to your new commute.")
+							await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
 						}
 						else {
 							userSettings.homeLat = coordinates.lat
@@ -162,6 +185,15 @@ async function processMessagingItem(messagingItem) {
 
 			switch (postbackPayload) {
 				case 'GET_STARTED_PAYLOAD':
+					let userSettings = await UserSettings.findOne({ senderId })
+					if (userSettings) {
+						userSettings.workLat = 0
+						userSettings.workLong = 0
+						userSettings.homeLat = 0
+						userSettings.homeLong = 0
+					}
+					await userSettings.save()
+
 					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
 					await sendHomePrompt(sender, "First of all, where do you live?")
 					break
