@@ -1,7 +1,7 @@
 const rp = require('request-promise');
 
-function sendMessage(recipient, messageText) {
-	rp({
+async function sendMessage(recipient, messageText) {
+	await rp({
 	  method: 'POST',
 	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
 	  body: {
@@ -15,23 +15,90 @@ function sendMessage(recipient, messageText) {
 	})
 }
 
-function processMessagingItem(messagingItem) {
-	const { recipient, timestamp, sender, postback} = messagingItem
+async function sendHomePrompt(recipient, messageText) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "text": messageText,
+	  	  "quick_replies":[
+	  	    {
+	  	      "content_type": "location",
+	  	      "title": "Send Location",
+	  	      "payload": "HOME_POSTBACK_PAYLOAD",
+	  	      "image_url": "http://example.com/img/red.png"
+	  	    },
+	  	  ]
+	  	},
+	  },
+	  json: true,
+	})
+}
+
+async function sendWorkPrompt(recipient, messageText) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "text": messageText,
+	  	  "quick_replies":[
+	  	    {
+	  	      "content_type": "location",
+	  	      "title": "Send Location",
+	  	      "payload": "WORK_POSTBACK_PAYLOAD",
+	  	      "image_url": "http://example.com/img/red.png"
+	  	    },
+	  	  ]
+	  	},
+	  },
+	  json: true,
+	})
+}
+
+async function processMessagingItem(messagingItem) {
+	const { recipient, timestamp, sender, postback, message } = messagingItem
 	const recipientId = recipient.id
 	const senderId = sender.id
-	if (postback) {
-		const postbackPayload = postback.payload
-		const postbackTitle = postback.title
 
-		switch (postbackPayload) {
-			case 'GET_STARTED_PAYLOAD':
-				sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
-				break
+	if (message) { // usually a location attachment
+		const { mid, seq, attachments } = message
+		console.log('attachments', attachments)
+		for (let i = 0; i < attachments.length; i++) {
+			const attachment = attachments[i]
+			switch (attachment.type) {
+				case 'location': 
+					const attachmentPayload = attachment.payload
+					const { coordinates } = attachmentPayload
+					console.log('coordinates', coordinates)
+					await sendWorkPrompt(sender, "Next, where do you work or study?")
+					break
+			}
 		}
+
 	}
-	else {
-		// this is not message, a read receipt or something
+	else { // usually a postback message
+		if (postback) {
+			const postbackPayload = postback.payload
+			const postbackTitle = postback.title
+
+			switch (postbackPayload) {
+				case 'GET_STARTED_PAYLOAD':
+					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
+					await sendHomePrompt(sender, "First of all, where do you live?")
+					break
+			}
+		}
+		else {
+			// this is not message, a read receipt or something
+		}		
 	}
+
 }
 
 
@@ -55,21 +122,22 @@ module.exports = (app) => {
 	app.post('/messenger', (req, res) => {
 		const { body } = req
 		const { object, entry } = body
-		for (var i = 0; i < entry.length; i++) {
+		for (let i = 0; i < entry.length; i++) {
 			const entryItem = entry[i];
 			const { messaging } = entryItem
-			for (var i = 0; i < messaging .length; i++) {
-				const messagingItem = messaging[i]
+			for (let j = 0; j < messaging .length; j++) {
+				const messagingItem = messaging[j]
 				console.log('messagingItem',messagingItem)
 				processMessagingItem(messagingItem)
-			};
+			}
 			console.log('entryItem',entryItem)
-		};
-
-		// console.log('object', object)
-		// console.log('entry', entry)
+		}
 
 		res.send({ success: true })
+	})
+
+	app.get('/user-settings/', (req, res) => {
+	  res.send({ success: false, error: 'This is a PUT route, not GET' })
 	})
 
 	app.put('/user-settings/', (req, res) => {
@@ -77,7 +145,7 @@ module.exports = (app) => {
 		const { userSettings, senderId } = body
 		const { officeArrivalTime, isMondayEnabled, isTuesdayEnabled, isWednesdayEnabled, isThursdayEnabled, isFridayEnabled, isSaturdayEnabled, isSundayEnabled } = userSettings
 
-	  res.send({ success: true })
+	  res.send({ success: true, userSettings, senderId })
 	})
 }
 
