@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/waltzaround/giga-what#readme",
   "dependencies": {
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "opn": "^5.4.0"
   }
 }
