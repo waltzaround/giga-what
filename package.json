@@ -1,0 +1,23 @@
+{
+  "name": "giga-what-api",
+  "version": "0.0.1",
+  "description": "API for talking to chatbot and other things for the team Giga-What",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/waltzaround/giga-what.git"
+  },
+  "author": "Team Giga-What",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/waltzaround/giga-what/issues"
+  },
+  "homepage": "https://github.com/waltzaround/giga-what#readme",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}
