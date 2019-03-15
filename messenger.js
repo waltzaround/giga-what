@@ -1,4 +1,54 @@
 const rp = require('request-promise');
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: './database.sqlite'
+});
+
+const UserSettings = sequelize.define('userSettings', {
+	senderId: {
+		type: Sequelize.STRING,
+	},
+	homeLat: {
+		type: Sequelize.DOUBLE,
+	},
+	homeLong: {
+		type: Sequelize.DOUBLE,
+	},
+	workLat: {
+		type: Sequelize.DOUBLE,
+	},
+	workLong: {
+		type: Sequelize.DOUBLE,
+	},
+	officeArrivalTime: {
+		type: Sequelize.STRING,
+	},
+	isMondayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isTuesdayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isWednesdayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isThursdayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isFridayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isSaturdayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+	isSundayEnabled: {
+		type: Sequelize.BOOLEAN,
+	},
+});
+
+sequelize.sync()
 
 async function sendMessage(recipient, messageText) {
 	await rp({
@@ -76,7 +126,30 @@ async function processMessagingItem(messagingItem) {
 					const attachmentPayload = attachment.payload
 					const { coordinates } = attachmentPayload
 					console.log('coordinates', coordinates)
-					await sendWorkPrompt(sender, "Next, where do you work or study?")
+					let userSettings = await UserSettings.findOne({ senderId })
+					if (userSettings) {
+						if (userSettings.homeLat && userSettings.homeLong) {
+							userSettings.workLat = coordinates.lat
+							userSettings.workLong = coordinates.long
+							await userSettings.save()
+							await sendMessage(sender, "Cool! I will help you get used to your new commute.")
+						}
+						else {
+							userSettings.homeLat = coordinates.lat
+							userSettings.homeLong = coordinates.long
+							await userSettings.save()
+							await sendWorkPrompt(sender, "Next, where do you work or study?")
+						}
+					}
+					else {
+						userSettings = await UserSettings.create({
+							senderId,
+							homeLat: coordinates.lat,
+							homeLong: coordinates.long,
+						})
+						await sendWorkPrompt(sender, "Next, where do you work or study?")
+					}
+					console.log('userSettings', userSettings)
 					break
 			}
 		}
