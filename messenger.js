@@ -462,8 +462,11 @@ module.exports = (app) => {
 		res.send({ success: true })
 	})
 
-	app.get('/user-settings/', (req, res) => {
-	  res.send({ success: false, error: 'This is a PUT route, not GET' })
+	app.get('/user-settings/', async (req, res) => {
+		const { query } = req
+		const { senderId } = query
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
+	  res.send({ success: true, userSettings })
 	})
 
 	app.put('/user-settings/', async (req, res) => {
