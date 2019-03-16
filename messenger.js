@@ -1,4 +1,4 @@
-const apiKey = "AIzaSyCYaTzhSutXzDW8PYAKp2-3S3b9tPzOjd4";
+const apiKey = process.env.DIRECTIONS_API_KEY;
 const rp = require('request-promise');
 const Sequelize = require('sequelize');
 const moment = require('moment-timezone')
