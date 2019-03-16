@@ -421,7 +421,7 @@ async function processMessagingItem(messagingItem) {
 								userSettings.workLat = coordinates.lat
 								userSettings.workLong = coordinates.long
 								await userSettings.save()
-								await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what stage you want to use public transit?")
+								await sendWhenPrompt(sender, "Awesome, when do you want to in the office by? And on which days do you want to use public transit?")
 							}
 							else {
 								userSettings.homeLat = coordinates.lat
