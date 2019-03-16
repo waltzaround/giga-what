@@ -560,16 +560,16 @@ module.exports = (app) => {
 	            "type":"postback",
 	            "payload":"GO_HOME_PAYLOAD"
 	          },
-	  	      {
-	            "title":"Go to work",
-	            "type":"postback",
-	            "payload":"GO_TO_WORK_PAYLOAD"
-	          },
-	  	      {
-	            "title":"Settings",
-	            "type":"postback",
-	            "payload":"SETTINGS_PAYLOAD"
-	          }
+	  	      // {
+	         //    "title":"Go to work",
+	         //    "type":"postback",
+	         //    "payload":"GO_TO_WORK_PAYLOAD"
+	         //  },
+	  	      // {
+	         //    "title":"Settings",
+	         //    "type":"postback",
+	         //    "payload":"SETTINGS_PAYLOAD"
+	         //  }
 	  	    ]
 	  	  }
 	  	]
