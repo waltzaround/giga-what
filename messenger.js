@@ -46,6 +46,9 @@ const UserSettings = sequelize.define('userSettings', {
 	isSundayEnabled: {
 		type: Sequelize.BOOLEAN,
 	},
+	currentLocationIntent: {
+		type: Sequelize.STRING,
+	}
 });
 
 sequelize.sync()
@@ -65,27 +68,7 @@ async function sendMessage(recipient, messageText) {
 	})
 }
 
-async function sendHomePrompt(recipient, messageText) {
-	await rp({
-	  method: 'POST',
-	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
-	  body: {
-	  	"messaging_type": "RESPONSE",
-	  	"recipient": recipient,
-	  	"message": {
-	  	  "text": messageText,
-	  	  "quick_replies":[
-	  	    {
-	  	      "content_type": "location",
-	  	    },
-	  	  ]
-	  	},
-	  },
-	  json: true,
-	})
-}
-
-async function sendWorkPrompt(recipient, messageText) {
+async function sendCurrentLocationPrompt(recipient, messageText) {
 	await rp({
 	  method: 'POST',
 	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
@@ -259,6 +242,21 @@ async function getBusRouteData(originCoords, destCoords, arrivalTime) {
   })
   return data
 }
+async function getBusRouteDataByDepTime(originCoords, destCoords, departureTime) {
+	const departureTimeUnix = departureTime.unix()
+  const data = await rp({
+  	uri: 'https://maps.googleapis.com/maps/api/directions/json',
+  	qs: {
+  		'origin': `${originCoords.lat},${originCoords.long}`,
+  		'destination': `${destCoords.lat},${destCoords.long}`,
+  		'mode': `transit`,
+  		'departure_time': `${departureTimeUnix}`,
+  		'key': `${apiKey}`,
+  	},
+  	json: true,
+  })
+  return data
+}
 
 function getBusStopLocation(data) {
   if (data.routes.length > 0) {
@@ -342,10 +340,22 @@ function getDirectionsLink(originCoords, destCoords, arrivalTimeMoment) {
 	return directionsWork
 }
 
+function getDirectionsLinkByDepTime(originCoords, destCoords, depTimeMoment) {
+	const originLat = originCoords.lat;
+	const originLong = originCoords.long;
+	const destLat = destCoords.lat
+	const destLong = destCoords.long
+
+	const depTimeUnix = moment.tz(depTimeMoment.format('YYYY-MM-DDTHH:mm:ss'), 'utc').unix()
+	const directionsWork = `https://www.google.com/maps/dir/${originLat},${originLong}/${destLat},${destLong}/data=!3m1!4b1!4m6!4m5!2m3!6e0!7e2!8j${depTimeUnix}!3e3`
+	return directionsWork
+}
+
 async function processMessagingItem(messagingItem) {
 	const { recipient, timestamp, sender, postback, message } = messagingItem
 	const recipientId = recipient.id
 	const senderId = sender.id
+	let userSettings = await UserSettings.findOne({ where: { senderId } })
 
 	if (message) { // usually a location attachment
 		const { mid, seq, attachments } = message
@@ -356,9 +366,46 @@ async function processMessagingItem(messagingItem) {
 					case 'location': 
 						const attachmentPayload = attachment.payload
 						const { coordinates } = attachmentPayload
-						let userSettings = await UserSettings.findOne({ where: { senderId } })
 						if (userSettings) {
-							if (userSettings.homeLat && userSettings.homeLong) {
+							const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+							const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+
+							if (userSettings.currentLocationIntent == 'GO_HOME') {
+								userSettings.currentLocationIntent = ""
+								await userSettings.save()
+
+								const now = moment()
+								const busStopData = await getBusRouteDataByDepTime(coordinates, homeCoords, now)
+								const busNumber = getBusNumber(busStopData)
+								const busStopCoordinates = getBusStopLocation(busStopData)
+								const streetViewLink = getStreetViewLink(busStopCoordinates)
+								const busStopTime = getBusStopTime(busStopData)
+								const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+								const url = getDirectionsLinkByDepTime(coordinates, homeCoords, now)
+
+								await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+								await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+
+								
+							}
+							else if (userSettings.currentLocationIntent == 'GO_TO_WORK') {
+								userSettings.currentLocationIntent = ""
+								await userSettings.save()
+
+								const now = moment()
+								const busStopData = await getBusRouteDataByDepTime(coordinates, workCoords, now)
+								const busNumber = getBusNumber(busStopData)
+								const busStopCoordinates = getBusStopLocation(busStopData)
+								const streetViewLink = getStreetViewLink(busStopCoordinates)
+								const busStopTime = getBusStopTime(busStopData)
+								const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+								const url = getDirectionsLinkByDepTime(coordinates, workCoords, now)
+
+								await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+								await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+								
+							}
+							else if (userSettings.homeLat && userSettings.homeLong) {
 								userSettings.workLat = coordinates.lat
 								userSettings.workLong = coordinates.long
 								await userSettings.save()
@@ -368,7 +415,7 @@ async function processMessagingItem(messagingItem) {
 								userSettings.homeLat = coordinates.lat
 								userSettings.homeLong = coordinates.long
 								await userSettings.save()
-								await sendWorkPrompt(sender, "Next, where do you work or study?")
+								await sendCurrentLocationPrompt(sender, "Next, where do you work or study?")
 							}
 						}
 						else {
@@ -377,7 +424,7 @@ async function processMessagingItem(messagingItem) {
 								homeLat: coordinates.lat,
 								homeLong: coordinates.long,
 							})
-							await sendWorkPrompt(sender, "Next, where do you work or study?")
+							await sendCurrentLocationPrompt(sender, "Next, where do you work or study?")
 						}
 						break
 				}
@@ -395,7 +442,6 @@ async function processMessagingItem(messagingItem) {
 			switch (postbackPayload) {
 				case 'SETTINGS_PAYLOAD':
 				case 'GET_STARTED_PAYLOAD':
-					let userSettings = await UserSettings.findOne({ where: { senderId } })
 					if (userSettings) {
 						userSettings.workLat = 0
 						userSettings.workLong = 0
@@ -413,12 +459,28 @@ async function processMessagingItem(messagingItem) {
 						})
 					}
 
-					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
-					await sendHomePrompt(sender, "First of all, where do you live?")
+					await sendMessage(sender, "Kia ora! I can make getting used to a new bus route easier!")
+					await sendCurrentLocationPrompt(sender, "First of all, where do you live?")
 					break
 				case 'GO_HOME_PAYLOAD':
+					if (userSettings) {
+						userSettings.currentLocationIntent = 'GO_HOME'
+						await userSettings.save()
+						await sendCurrentLocationPrompt(sender, "Where you are right now?")
+					}
+					else {
+						await sendMessage(sender, 'Please finish initial settings to use Go Home and Go to work.')
+					}
 					break;
 				case 'GO_TO_WORK_PAYLOAD':
+					if (userSettings) {
+						userSettings.currentLocationIntent = 'GO_TO_WORK'
+						await userSettings.save()
+						await sendCurrentLocationPrompt(sender, "Where you are right now?")
+					}
+					else {
+						await sendMessage(sender, 'Please finish initial settings to use Go Home and Go to work.')
+					}
 					break;
 			}
 		}
@@ -618,16 +680,16 @@ module.exports = (app) => {
 	  	    "locale":"default",
 	  	    "composer_input_disabled": true,
 	  	    "call_to_actions":[
-	  	      // {
-	         //    "title":"Go home",
-	         //    "type":"postback",
-	         //    "payload":"GO_HOME_PAYLOAD"
-	         //  },
-	  	      // {
-	         //    "title":"Go to work",
-	         //    "type":"postback",
-	         //    "payload":"GO_TO_WORK_PAYLOAD"
-	         //  },
+	  	      {
+	            "title":"Go home",
+	            "type":"postback",
+	            "payload":"GO_HOME_PAYLOAD"
+	          },
+	  	      {
+	            "title":"Go to work",
+	            "type":"postback",
+	            "payload":"GO_TO_WORK_PAYLOAD"
+	          },
 	  	      {
 	            "title":"Settings",
 	            "type":"postback",
