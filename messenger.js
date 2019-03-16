@@ -134,6 +134,47 @@ async function sendWhenPrompt(recipient, messageText) {
 	})
 }
 
+async function sendLinkMessage(recipient, messageText, url, buttonText) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "attachment": {
+	  	    "type": "template",
+	  	    "payload": {
+	  	      "template_type": "button",
+	  	      "text":  messageText,
+	  	      "buttons": [
+	  	        {
+	  	          "type": "web_url",
+	  	          url,
+	  	          "title": "Select",
+	  	          "webview_height_ratio": "full",
+	  	        }
+	  	      ]
+	  	    }
+	  	  }
+	  	},
+	  },
+	  json: true,
+	})
+
+}
+
+function getStreetViewLink(coordinates) {
+	const busStopLat = -36.846178;
+	const BusStopLong = 174.766155;
+	const streetView = "http://maps.google.com/maps?q=&layer=c&cbll=" + busStopLat + "," + BusStopLong;
+	return streetView
+}
+
+function thirtyMinsBefore() {
+
+}
+
 async function processMessagingItem(messagingItem) {
 	const { recipient, timestamp, sender, postback, message } = messagingItem
 	const recipientId = recipient.id
@@ -273,6 +314,8 @@ module.exports = (app) => {
 			await userSettings.save()
 
 			await sendMessage({ id: senderId }, 'Cool! I will help you get used to your new commute. You\'ll receive the alarm 30 minutes before departure.')
+			const busStopCoordinates = {}
+			await sendLinkMessage({ id: senderId }, 'Get to know your bus stop!', getStreetViewLink(busStopCoordinates), 'Street View')
 			
 
 			// if (userSettings.homeLat && userSettings.homeLong) {
