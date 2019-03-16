@@ -121,7 +121,7 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	      "buttons": [
 	  	        {
 	  	          "type": "web_url",
-	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
+	  	          "url": `${process.env.MESSENGER_FRONTEND_URL}/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
 	  	          // "messenger_extensions": true,
