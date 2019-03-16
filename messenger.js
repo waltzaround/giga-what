@@ -1,10 +1,10 @@
+const apiKey = "AIzaSyCYaTzhSutXzDW8PYAKp2-3S3b9tPzOjd4";
 const rp = require('request-promise');
 const Sequelize = require('sequelize');
+const moment = require('moment-timezone')
+const _ = require('lodash')
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './database.sqlite'
-});
+const sequelize = new Sequelize({ dialect: 'sqlite', storage: './database.sqlite' });
 
 const UserSettings = sequelize.define('userSettings', {
 	senderId: {
@@ -164,10 +164,67 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 
 }
 
+function getDayofWekkWithTime(dayOfWeek, time) {
+	const today = moment().isoWeekday();
+	if (today <= dayOfWeek) { 
+	  return moment(time, "h:mm").isoWeekday(dayOfWeek);
+	}
+	else {
+	  return moment(time, "h:mm").add(1, 'weeks').isoWeekday(dayOfWeek);
+	}
+}
+
+function getNextArrivalTime(userSettings) {
+	if (userSettings.isMondayEnabled) {
+		return getDayofWekkWithTime(1, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isTuesdayEnabled) {
+		return getDayofWekkWithTime(2, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isWednesdayEnabled) {
+		return getDayofWekkWithTime(3, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isThursdayEnabled) {
+		return getDayofWekkWithTime(4, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isFridayEnabled) {
+		return getDayofWekkWithTime(5, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isSaturdayEnabled) {
+		return getDayofWekkWithTime(6, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isSundayEnabled) {
+		return getDayofWekkWithTime(7, userSettings.officeArrivalTime)
+	}
+}
+
+async function getBusStopLocation(originCoords, destCoords, arrivalTime) {
+	const arrivalTimeUnix = arrivalTime.unix()
+  const data = await rp({
+  	uri: 'https://maps.googleapis.com/maps/api/directions/json',
+  	qs: {
+  		'origin': `${originCoords.lat},${originCoords.long}`,
+  		'destination': `${destCoords.lat},${destCoords.long}`,
+  		'mode': `transit`,
+  		'arrival_time': `${arrivalTimeUnix}`,
+  		'key': `${apiKey}`,
+  	},
+  	json: true,
+  })
+  console.log('getBusStopLocation data', data)
+
+  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+  console.log('travelModeTransitStep',travelModeTransitStep)
+  const location = travelModeTransitStep.start_location
+  return location
+}
+
+
 function getStreetViewLink(coordinates) {
-	const busStopLat = -36.8555378;
-	const BusStopLong = 174.8238183;
+	const busStopLat = coordinates.lat;
+	const BusStopLong = coordinates.lng;
 	const streetView = "http://maps.google.com/maps?q=&layer=c&cbll=" + busStopLat + "," + BusStopLong;
+	console.log('streetView',streetView)
 	return streetView
 }
 
@@ -182,7 +239,6 @@ async function processMessagingItem(messagingItem) {
 
 	if (message) { // usually a location attachment
 		const { mid, seq, attachments } = message
-		console.log('attachments', attachments)
 		if (attachments) {
 			for (let i = 0; i < attachments.length; i++) {
 				const attachment = attachments[i]
@@ -190,7 +246,6 @@ async function processMessagingItem(messagingItem) {
 					case 'location': 
 						const attachmentPayload = attachment.payload
 						const { coordinates } = attachmentPayload
-						console.log('coordinates', coordinates)
 						let userSettings = await UserSettings.findOne({ senderId })
 						if (userSettings) {
 							if (userSettings.homeLat && userSettings.homeLong) {
@@ -214,7 +269,6 @@ async function processMessagingItem(messagingItem) {
 							})
 							await sendWorkPrompt(sender, "Next, where do you work or study?")
 						}
-						console.log('userSettings', userSettings)
 						break
 				}
 			}			
@@ -291,10 +345,8 @@ module.exports = (app) => {
 			const { messaging } = entryItem
 			for (let j = 0; j < messaging .length; j++) {
 				const messagingItem = messaging[j]
-				console.log('messagingItem',messagingItem)
 				processMessagingItem(messagingItem)
 			}
-			console.log('entryItem',entryItem)
 		}
 
 		res.send({ success: true })
@@ -320,7 +372,7 @@ module.exports = (app) => {
 
 		let userSettings = await UserSettings.findOne({ where: { senderId } })
 		if (userSettings) {
-			console.log('userSettings',userSettings)
+			console.log('userSettings', userSettings.get({ plain: true }))
 
 			userSettings.officeArrivalTime = officeArrivalTime
 			userSettings.isMondayEnabled = isMondayEnabled
@@ -333,24 +385,23 @@ module.exports = (app) => {
 			await userSettings.save()
 
 			await sendMessage({ id: senderId }, 'Cool! I will help you get used to your new commute. You\'ll receive the alarm 30 minutes before departure.')
-			const busStopCoordinates = {}
-			await sendLinkMessage({ id: senderId }, 'Get to know your bus stop!', getStreetViewLink(busStopCoordinates), 'Street View')
-			
-
-			// if (userSettings.homeLat && userSettings.homeLong) {
-			// 	userSettings.workLat = coordinates.lat
-			// 	userSettings.workLong = coordinates.long
-			// 	await userSettings.save()
-			// 	await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
-			// }
-			// else {
-			// 	userSettings.homeLat = coordinates.lat
-			// 	userSettings.homeLong = coordinates.long
-			// 	await userSettings.save()
-			// 	await sendWorkPrompt(sender, "Next, where do you work or study?")
-			// }
+			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+			const arrivalTime = getNextArrivalTime(userSettings)
+			if (arrivalTime) {
+				try {
+					const busStopCoordinates = await getBusStopLocation(homeCoords, workCoords, arrivalTime)
+					const streetViewLink = getStreetViewLink(busStopCoordinates)
+					await sendLinkMessage({ id: senderId }, 'Get to know your bus stop!', streetViewLink, 'Street View')
+				}
+				catch (error) {
+					await sendMessage({ id: senderId }, 'No routes for your bus found :-(. Try setting your settings again.')
+				}
+			}
+			else {
+				await sendWhenPrompt({ id: senderId }, "You haven't selected the days you want to go to work.")
+			}
 		}
-
 
 	  res.send({ success: true, userSettings })
 	})
