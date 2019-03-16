@@ -200,7 +200,7 @@ function getNextArrivalTimeMoment(userSettings) {
 		return getDayofWekkWithTimeMoment(7, userSettings.officeArrivalTime)
 	}
 }
-async function getBusRoutesData(originCoords, destCoords, arrivalTime) {
+async function getBusRouteData(originCoords, destCoords, arrivalTime) {
 	const arrivalTimeUnix = arrivalTime.unix()
   const data = await rp({
   	uri: 'https://maps.googleapis.com/maps/api/directions/json',
@@ -216,7 +216,7 @@ async function getBusRoutesData(originCoords, destCoords, arrivalTime) {
   return data
 }
 
-async function getBusStopLocation(data) {
+function getBusStopLocation(data) {
   if (data.routes.length > 0) {
 	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
 	  console.log('travelModeTransitStep',travelModeTransitStep)
@@ -227,7 +227,8 @@ async function getBusStopLocation(data) {
   	return undefined
   }
 }
-async function getBusStopTime(data) {
+
+function getBusStopTime(data) {
   if (data.routes.length > 0) {
 	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
 	  // console.log('travelModeTransitStep',travelModeTransitStep)
@@ -244,7 +245,7 @@ async function getBusStopTime(data) {
   	return undefined
   }
 }
-async function getBusNumber(data) {
+function getBusNumber(data) {
   if (data.routes.length > 0) {
 	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
 	  const line = travelModeTransitStep.transit_details.line
@@ -261,7 +262,7 @@ async function getBusNumber(data) {
 
 }
 
-async function getCommuteDepartureTime(data) {
+function getCommuteDepartureTime(data) {
   if (data.routes.length > 0) {
   	const departureTime = data.routes[0].legs[0].departure_time
   	if (departureTime) {
@@ -276,7 +277,6 @@ async function getCommuteDepartureTime(data) {
   	return undefined
   }
 }
-
 
 function getStreetViewLink(coordinates) {
 	const busStopLat = coordinates.lat;
@@ -387,6 +387,7 @@ async function processMessagingItem(messagingItem) {
 
 
 module.exports = (app) => {
+
 	app.get('/messenger', (req, res) => {
 		const mode = req.query['hub.mode']
 		const verify_token = req.query['hub.verify_token']
@@ -397,7 +398,7 @@ module.exports = (app) => {
 	    res.status(200)
 	    res.send(challenge)
 	  } else {
-	    console.error('[WEBHOOK] Failed validation');
+	    console.log('[WEBHOOK] Failed validation');
 	    res.status(200)
 	    res.send('')
 	  }
@@ -414,7 +415,6 @@ module.exports = (app) => {
 				processMessagingItem(messagingItem)
 			}
 		}
-
 		res.send({ success: true })
 	})
 
@@ -433,21 +433,23 @@ module.exports = (app) => {
 			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
 			const arrivalTime = getNextArrivalTimeMoment(userSettings)			
 			if (arrivalTime) {
-				console.log('senderId', senderId, 'arrivalTime',arrivalTime.format())
+				console.log('senderId', senderId, 'arrivalTime.format()',arrivalTime.format())
 				const url = getDirectionsLink(homeCoords, workCoords, arrivalTime)
-			  const busStopData = await getBusRoutesData(homeCoords, workCoords, arrivalTime)
-				const departureTime = await getCommuteDepartureTime(busStopData)
-				const busStopTime = await getBusStopTime(busStopData)
-				const busNumber = await getBusNumber(busStopData)
+			  const busStopData = await getBusRouteData(homeCoords, workCoords, arrivalTime)
+				const departureTime = getCommuteDepartureTime(busStopData)
 
 				if (departureTime) {
+					const busStopTime = getBusStopTime(busStopData)
+					const busNumber = getBusNumber(busStopData)
+					const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+
 					console.log('senderId', senderId, 'departureTime.format()', departureTime.format())
 
 					if (Math.abs(departureTime.clone().subtract(35, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
-						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus will arrive in ${busStopTime.diff(moment(), 'minutes')} minutes (${busNumber}). Leave in 30 minutes`, url, 'Where to go')
+						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 30 minutes`, url, 'Where to go')
 					}
 					else if (Math.abs(departureTime.clone().subtract(15, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
-						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus will arrive in ${busStopTime.diff(moment(), 'minutes')} minutes (${busNumber})`, url, 'Where to go')
+						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus will arrive in ${busLeavesIn} minutes (${busNumber})`, url, 'Where to go')
 					}					
 				}
 				else {
@@ -503,12 +505,14 @@ module.exports = (app) => {
 			const arrivalTime = getNextArrivalTimeMoment(userSettings)
 			if (arrivalTime) {
 				try {
-				  const busStopData = await getBusRoutesData(homeCoords, workCoords, arrivalTime)
-					const departureTime = await getCommuteDepartureTime(busStopData)
-					const busStopCoordinates = await getBusStopLocation(busStopData)
-					const streetViewLink = getStreetViewLink(busStopCoordinates)
+				  const busStopData = await getBusRouteData(homeCoords, workCoords, arrivalTime)
+					const departureTime = getCommuteDepartureTime(busStopData)
 					if (departureTime) {
-						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTime.format('h:mmA')}. You\'ll receive the alarm 30 minutes before departure.`)
+						const busStopCoordinates = getBusStopLocation(busStopData)
+						const streetViewLink = getStreetViewLink(busStopCoordinates)
+						const departureTimeCopy = departureTime.format('h:mmA')
+
+						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTimeCopy}. You'll receive the alarm 30 minutes before departure.`)
 						await sendLinkMessage(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
 					}
 					else {
@@ -523,6 +527,9 @@ module.exports = (app) => {
 			else {
 				await sendWhenPrompt(sender, "You haven't selected the days you want to go to work.")
 			}
+		}
+		else {
+			await sendMessage(sender, 'Work and home locations are not set. Try setting your settings again.')
 		}
 
 	  res.send({ success: true, userSettings })
