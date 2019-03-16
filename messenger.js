@@ -621,6 +621,7 @@ module.exports = (app) => {
 			isSaturdayEnabled,
 			isSundayEnabled,
 		} = body.userSettings
+		const sender = { id: senderId }
 
 		let userSettings = await UserSettings.findOne({ where: { senderId } })
 		if (userSettings) {
@@ -636,7 +637,6 @@ module.exports = (app) => {
 			userSettings.isSundayEnabled = isSundayEnabled
 			await userSettings.save()
 
-			const sender = { id: senderId }
 			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
 			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
 			const arrivalTime = getNextArrivalTimeMoment(userSettings)
