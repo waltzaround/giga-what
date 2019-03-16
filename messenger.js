@@ -555,21 +555,21 @@ module.exports = (app) => {
 	  	    "locale":"default",
 	  	    "composer_input_disabled": true,
 	  	    "call_to_actions":[
-	  	      {
-	            "title":"Go home",
-	            "type":"postback",
-	            "payload":"GO_HOME_PAYLOAD"
-	          },
+	  	      // {
+	         //    "title":"Go home",
+	         //    "type":"postback",
+	         //    "payload":"GO_HOME_PAYLOAD"
+	         //  },
 	  	      // {
 	         //    "title":"Go to work",
 	         //    "type":"postback",
 	         //    "payload":"GO_TO_WORK_PAYLOAD"
 	         //  },
-	  	      // {
-	         //    "title":"Settings",
-	         //    "type":"postback",
-	         //    "payload":"SETTINGS_PAYLOAD"
-	         //  }
+	  	      {
+	            "title":"Settings",
+	            "type":"postback",
+	            "payload":"SETTINGS_PAYLOAD"
+	          }
 	  	    ]
 	  	  }
 	  	]
