@@ -711,7 +711,7 @@ module.exports = (app) => {
 	            "payload":"GO_TO_WORK_PAYLOAD"
 	          },
 	  	      {
-	            "title":"Settings",
+	            "title":"Reset settings",
 	            "type":"postback",
 	            "payload":"SETTINGS_PAYLOAD"
 	          }
