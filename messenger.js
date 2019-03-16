@@ -651,7 +651,7 @@ module.exports = (app) => {
 
 						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTimeCopy}. You'll receive the alarm 30 minutes before departure.`)
 						if (senderId == '2132496623507619' || senderId == '1895793460527211') {
-							await sendLinkMessage(sender, 'Get to know your bus stop!', 'zappy://zappy.chat', 'Augmented Reality')
+							await sendLinkMessage(sender, 'Get to know your bus stop!', `https://api.zappy.chat/ar`, 'Augmented Reality')
 						}
 						else {
 							await sendLinkMessage(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
