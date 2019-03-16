@@ -124,6 +124,8 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
+	  	          // "messenger_extensions": true,
+	  	          "webview_share_button": "hide",
 	  	        }
 	  	      ]
 	  	    }
@@ -153,6 +155,7 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	  	          url,
 	  	          "title": buttonText,
 	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
 	  	        }
 	  	      ]
 	  	    }
@@ -164,7 +167,7 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 
 }
 
-function getDayofWekkWithTime(dayOfWeek, time) {
+function getDayofWekkWithTimeMoment(dayOfWeek, time) {
 	const today = moment().isoWeekday();
 	if (today <= dayOfWeek) { 
 	  return moment(time, "h:mm").isoWeekday(dayOfWeek);
@@ -174,31 +177,30 @@ function getDayofWekkWithTime(dayOfWeek, time) {
 	}
 }
 
-function getNextArrivalTime(userSettings) {
+function getNextArrivalTimeMoment(userSettings) {
 	if (userSettings.isMondayEnabled) {
-		return getDayofWekkWithTime(1, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(1, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isTuesdayEnabled) {
-		return getDayofWekkWithTime(2, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(2, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isWednesdayEnabled) {
-		return getDayofWekkWithTime(3, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(3, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isThursdayEnabled) {
-		return getDayofWekkWithTime(4, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(4, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isFridayEnabled) {
-		return getDayofWekkWithTime(5, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(5, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isSaturdayEnabled) {
-		return getDayofWekkWithTime(6, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(6, userSettings.officeArrivalTime)
 	}
 	else if (userSettings.isSundayEnabled) {
-		return getDayofWekkWithTime(7, userSettings.officeArrivalTime)
+		return getDayofWekkWithTimeMoment(7, userSettings.officeArrivalTime)
 	}
 }
-
-async function getBusStopLocation(originCoords, destCoords, arrivalTime) {
+async function getBusRoutesData(originCoords, destCoords, arrivalTime) {
 	const arrivalTimeUnix = arrivalTime.unix()
   const data = await rp({
   	uri: 'https://maps.googleapis.com/maps/api/directions/json',
@@ -211,12 +213,68 @@ async function getBusStopLocation(originCoords, destCoords, arrivalTime) {
   	},
   	json: true,
   })
-  console.log('getBusStopLocation data', data)
+  return data
+}
 
-  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
-  console.log('travelModeTransitStep',travelModeTransitStep)
-  const location = travelModeTransitStep.start_location
-  return location
+async function getBusStopLocation(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  console.log('travelModeTransitStep',travelModeTransitStep)
+	  const location = travelModeTransitStep.start_location
+	  return location
+  }
+  else {
+  	return undefined
+  }
+}
+async function getBusStopTime(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  // console.log('travelModeTransitStep',travelModeTransitStep)
+	  const departureTime = travelModeTransitStep.transit_details.departure_time
+	  if (departureTime) {
+	  	const departureTimeMoment = moment.unix(departureTime.value)
+	  	return departureTimeMoment
+	  }
+	  else {
+	  	return undefined
+	  }
+  }
+  else {
+  	return undefined
+  }
+}
+async function getBusNumber(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  const line = travelModeTransitStep.transit_details.line
+	  if (line) {
+	  	return line.short_name
+	  }
+	  else {
+	  	return undefined
+	  }
+  }
+  else {
+  	return undefined
+  }
+
+}
+
+async function getCommuteDepartureTime(data) {
+  if (data.routes.length > 0) {
+  	const departureTime = data.routes[0].legs[0].departure_time
+  	if (departureTime) {
+  		const departureTimeMoment = moment.unix(departureTime.value)
+  		return departureTimeMoment  	
+  	}
+  	else {
+  		return undefined
+  	}  	
+  }
+  else {
+  	return undefined
+  }
 }
 
 
@@ -228,8 +286,16 @@ function getStreetViewLink(coordinates) {
 	return streetView
 }
 
-function thirtyMinsBefore() {
+function getDirectionsLink(originCoords, destCoords, arrivalTimeMoment) {
+	const originLat = originCoords.lat;
+	const originLong = originCoords.long;
+	const destLat = destCoords.lat
+	const destLong = destCoords.long
 
+	const arrivalTimeUnix = moment.tz(arrivalTimeMoment.format('YYYY-MM-DDTHH:mm:ss'), 'utc').unix()
+	const directionsWork = `https://www.google.com/maps/dir/${originLat},${originLong}/${destLat},${destLong}/data=!3m1!4b1!4m6!4m5!2m3!6e1!7e2!8j${arrivalTimeUnix}!3e3`
+
+	return directionsWork
 }
 
 async function processMessagingItem(messagingItem) {
@@ -352,6 +418,50 @@ module.exports = (app) => {
 		res.send({ success: true })
 	})
 
+	app.get('/minute-tick', async (req, res) => {
+		const { nowTime } = req.query
+		const nowtimeMoment = nowTime ? moment(nowTime) : moment()
+		const userSettingsEntries = await UserSettings.findAll({})
+	
+		console.log('nowtimeMoment',nowtimeMoment.format())
+		for (var i = 0; i < userSettingsEntries.length; i++) {
+			const userSettings = userSettingsEntries[i]
+
+			const senderId = userSettings.senderId
+			const sender = { id: senderId }
+			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+			const arrivalTime = getNextArrivalTimeMoment(userSettings)			
+			if (arrivalTime) {
+				console.log('senderId', senderId, 'arrivalTime',arrivalTime.format())
+				const url = getDirectionsLink(homeCoords, workCoords, arrivalTime)
+			  const busStopData = await getBusRoutesData(homeCoords, workCoords, arrivalTime)
+				const departureTime = await getCommuteDepartureTime(busStopData)
+				const busStopTime = await getBusStopTime(busStopData)
+				const busNumber = await getBusNumber(busStopData)
+
+				if (departureTime) {
+					console.log('senderId', senderId, 'departureTime.format()', departureTime.format())
+
+					if (Math.abs(departureTime.clone().subtract(35, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
+						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus will arrive in ${busStopTime.diff(moment(), 'minutes')} minutes (${busNumber}). Leave in 30 minutes`, url, 'Where to go')
+					}
+					else if (Math.abs(departureTime.clone().subtract(15, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
+						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus will arrive in ${busStopTime.diff(moment(), 'minutes')} minutes (${busNumber})`, url, 'Where to go')
+					}					
+				}
+				else {
+					// trip is too short.
+				}
+			}
+			else {
+				// the notifications is not set up proerply
+			}
+		};
+
+		res.send({ success: true })
+	})
+
 	app.get('/user-settings/', (req, res) => {
 	  res.send({ success: false, error: 'This is a PUT route, not GET' })
 	})
@@ -384,22 +494,31 @@ module.exports = (app) => {
 			userSettings.isSundayEnabled = isSundayEnabled
 			await userSettings.save()
 
-			await sendMessage({ id: senderId }, 'Cool! I will help you get used to your new commute. You\'ll receive the alarm 30 minutes before departure.')
+			const sender = { id: senderId }
 			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
 			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
-			const arrivalTime = getNextArrivalTime(userSettings)
+			const arrivalTime = getNextArrivalTimeMoment(userSettings)
 			if (arrivalTime) {
 				try {
-					const busStopCoordinates = await getBusStopLocation(homeCoords, workCoords, arrivalTime)
+				  const busStopData = await getBusRoutesData(homeCoords, workCoords, arrivalTime)
+					const departureTime = await getCommuteDepartureTime(busStopData)
+					const busStopCoordinates = await getBusStopLocation(busStopData)
 					const streetViewLink = getStreetViewLink(busStopCoordinates)
-					await sendLinkMessage({ id: senderId }, 'Get to know your bus stop!', streetViewLink, 'Street View')
+					if (departureTime) {
+						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTime.format('h:mmA')}. You\'ll receive the alarm 30 minutes before departure.`)
+						await sendLinkMessage(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
+					}
+					else {
+						await sendMessage(sender, 'It looks like this route doesn\'t have a bus trip')
+					}
 				}
 				catch (error) {
-					await sendMessage({ id: senderId }, 'No routes for your bus found :-(. Try setting your settings again.')
+					console.log('error',error)
+					await sendMessage(sender, 'No routes for your bus found :-(. Try setting your settings again.')
 				}
 			}
 			else {
-				await sendWhenPrompt({ id: senderId }, "You haven't selected the days you want to go to work.")
+				await sendWhenPrompt(sender, "You haven't selected the days you want to go to work.")
 			}
 		}
 

@@ -12,6 +12,13 @@ const rp = require('request-promise');
 app.use(morgan('combined'))
 app.use(bodyParser.json())
 
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  next();
+});
+require('./messenger')(app);
 
 app.get('/', async (req, res) => res.send(await getWeather(-36.846178, 174.766155)))
 app.get('/dirWork', (req, res) => res.send(opn(directionsWork)))
