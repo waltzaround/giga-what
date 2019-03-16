@@ -34,7 +34,7 @@ app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 //Get Bus Weather
 const areaLat = -36.846178;
 const areaLong = 174.766155;
-const weatherAPI = "5c7e05cd01783455a05f254388393cc5";
+const weatherAPI = process.env.WEATHER_API_KEY;
 
 const weather = "http://api.openweathermap.org/data/2.5/weather?lat=" + areaLat + "&lon=" + areaLong + "&appid=" + weatherAPI;
 
