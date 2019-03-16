@@ -650,7 +650,7 @@ module.exports = (app) => {
 						const departureTimeCopy = departureTime.format('h:mmA')
 
 						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTimeCopy}. You'll receive the alarm 30 minutes before departure.`)
-						if (senderId == '2132496623507619') {
+						if (senderId == '2132496623507619' || senderId == '1895793460527211') {
 							await sendLinkMessage(sender, 'Get to know your bus stop!', 'zappy://zappy.chat', 'Augmented Reality')
 						}
 						else {
