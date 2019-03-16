@@ -231,14 +231,23 @@ async function processMessagingItem(messagingItem) {
 			switch (postbackPayload) {
 				case 'SETTINGS_PAYLOAD':
 				case 'GET_STARTED_PAYLOAD':
-					let userSettings = await UserSettings.findOne({ senderId })
+					let userSettings = await UserSettings.findOne({ where: { senderId } })
 					if (userSettings) {
 						userSettings.workLat = 0
 						userSettings.workLong = 0
 						userSettings.homeLat = 0
 						userSettings.homeLong = 0
+						await userSettings.save()
 					}
-					await userSettings.save()
+					else {
+						userSettings = await UserSettings.create({
+							senderId,
+							workLat: 0,
+							workLong: 0,
+							homeLat: 0,
+							homeLong: 0,
+						})
+					}
 
 					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
 					await sendHomePrompt(sender, "First of all, where do you live?")
@@ -309,8 +318,9 @@ module.exports = (app) => {
 			isSundayEnabled,
 		} = body.userSettings
 
-		let userSettings = await UserSettings.findOne({ senderId })
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
 		if (userSettings) {
+			console.log('userSettings',userSettings)
 
 			userSettings.officeArrivalTime = officeArrivalTime
 			userSettings.isMondayEnabled = isMondayEnabled
