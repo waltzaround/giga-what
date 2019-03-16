@@ -75,7 +75,7 @@ async function getWeather(areaLat, areaLong) {
         json: true,
     })
 
-  const weather = (data.weather[0].main)
+  const weather = (data.weather[0].description)
   return weather
 }
 
