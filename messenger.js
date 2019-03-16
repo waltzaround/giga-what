@@ -121,7 +121,7 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	      "buttons": [
 	  	        {
 	  	          "type": "web_url",
-	  	          "url": `http://localhost:3000/?senderId=${recipient.id}`,
+	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
 	  	        }
@@ -245,12 +245,52 @@ module.exports = (app) => {
 	  res.send({ success: false, error: 'This is a PUT route, not GET' })
 	})
 
-	app.put('/user-settings/', (req, res) => {
+	app.put('/user-settings/', async (req, res) => {
 		const { body } = req
-		const { userSettings, senderId } = body
-		const { officeArrivalTime, isMondayEnabled, isTuesdayEnabled, isWednesdayEnabled, isThursdayEnabled, isFridayEnabled, isSaturdayEnabled, isSundayEnabled } = userSettings
+		const {
+			senderId,
+			officeArrivalTime,
+			isMondayEnabled,
+			isTuesdayEnabled,
+			isWednesdayEnabled,
+			isThursdayEnabled,
+			isFridayEnabled,
+			isSaturdayEnabled,
+			isSundayEnabled,
+		} = body.userSettings
 
-	  res.send({ success: true, userSettings, senderId })
+		let userSettings = await UserSettings.findOne({ senderId })
+		if (userSettings) {
+
+			userSettings.officeArrivalTime = officeArrivalTime
+			userSettings.isMondayEnabled = isMondayEnabled
+			userSettings.isTuesdayEnabled = isTuesdayEnabled
+			userSettings.isWednesdayEnabled = isWednesdayEnabled
+			userSettings.isThursdayEnabled = isThursdayEnabled
+			userSettings.isFridayEnabled = isFridayEnabled
+			userSettings.isSaturdayEnabled = isSaturdayEnabled
+			userSettings.isSundayEnabled = isSundayEnabled
+			await userSettings.save()
+
+			await sendMessage({ id: senderId }, 'Cool! I will help you get used to your new commute. You\'ll receive the alarm 30 minutes before departure.')
+			
+
+			// if (userSettings.homeLat && userSettings.homeLong) {
+			// 	userSettings.workLat = coordinates.lat
+			// 	userSettings.workLong = coordinates.long
+			// 	await userSettings.save()
+			// 	await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
+			// }
+			// else {
+			// 	userSettings.homeLat = coordinates.lat
+			// 	userSettings.homeLong = coordinates.long
+			// 	await userSettings.save()
+			// 	await sendWorkPrompt(sender, "Next, where do you work or study?")
+			// }
+		}
+
+
+	  res.send({ success: true, userSettings })
 	})
 }
 
