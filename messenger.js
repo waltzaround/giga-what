@@ -312,7 +312,7 @@ async function processMessagingItem(messagingItem) {
 					case 'location': 
 						const attachmentPayload = attachment.payload
 						const { coordinates } = attachmentPayload
-						let userSettings = await UserSettings.findOne({ senderId })
+						let userSettings = await UserSettings.findOne({ where: { senderId } })
 						if (userSettings) {
 							if (userSettings.homeLat && userSettings.homeLong) {
 								userSettings.workLat = coordinates.lat
