@@ -26,7 +26,7 @@ app.get('/dirHome', (req, res) => res.send(opn(directionsHome)))
 app.get('/sview', (req, res) => res.send(opn(streetView)))
 app.get('/bstop', (req, res) => res.send(data))
 app.get('/weather', (req, res) => res.send(opn(weather)));
-app.get('/ar', (req, res) => res.send(opn('zappy://zappy.chat')));
+app.get('/ar', (req, res) => res.redirect('zappy://zappy.chat'));
 
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
