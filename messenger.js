@@ -523,6 +523,7 @@ module.exports = (app) => {
 		const url = getDirectionsLink(homeCoords, workCoords, moment(arrivalTime).add(30, 'minutes'))
 
 		await sendDisruptionMessage(sender, `Something has happened to your bus (${busNumber}). The next one is in 30 minutes. \n\nAlternatively you can take:\n\nan Uber - arrive by ${uberArrivalTimeCopy}\na Lime - arrive by ${limeArrivalTimeCopy}\na car - arrive by ${carArrivalTimeCopy}`, url)
+		res.send({success:true})
 
 	})
 
