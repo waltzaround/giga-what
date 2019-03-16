@@ -164,6 +164,50 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	  },
 	  json: true,
 	})
+}
+
+async function sendDisruptionMessage(recipient, messageText, busUrl) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "attachment": {
+	  	    "type": "template",
+	  	    "payload": {
+	  	      "template_type": "button",
+	  	      "text":  messageText,
+	  	      "buttons": [
+	  	        {
+	  	          "type": "web_url",
+	  	          url: "https://m.uber.com/ul/",
+	  	          "title": "Get Uber",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        },
+	  	        {
+	  	          "type": "web_url",
+	  	          url: "https://www.li.me/",
+	  	          "title": "Find a Lime",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        },
+	  	        {
+	  	          "type": "web_url",
+	  	          url: busUrl,
+	  	          "title": "See next bus",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        }
+	  	      ]
+	  	    }
+	  	  }
+	  	},
+	  },
+	  json: true,
+	})
 
 }
 
@@ -462,6 +506,24 @@ module.exports = (app) => {
 		};
 
 		res.send({ success: true })
+	})
+
+	app.get('/disruption-alert/', async (req, res) => {
+		const { query } = req
+		const { senderId, busNumber, arrivalTime } = query
+
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
+		const sender = { id: senderId }
+		const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+		const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+
+		const uberArrivalTimeCopy = moment(arrivalTime).add(06, 'minutes').format("h:mmA")
+		const limeArrivalTimeCopy = moment(arrivalTime).add(16, 'minutes').format("h:mmA")
+		const carArrivalTimeCopy = moment(arrivalTime).add(04, 'minutes').format("h:mmA")
+		const url = getDirectionsLink(homeCoords, workCoords, moment(arrivalTime).add(30, 'minutes'))
+
+		await sendDisruptionMessage(sender, `Something has happened to your bus (${busNumber}). The next one is in 30 minutes. \n\nAlternatively you can take:\n\nan Uber - arrive by ${uberArrivalTimeCopy}\na Lime - arrive by ${limeArrivalTimeCopy}\na car - arrive by ${carArrivalTimeCopy}`, url)
+
 	})
 
 	app.get('/user-settings/', async (req, res) => {
