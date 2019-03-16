@@ -43,9 +43,9 @@ const BusStopLong = 174.766155;
 const streetView = "http://maps.google.com/maps?q=&layer=c&cbll=" + busStopLat + "," + BusStopLong;
 
 //Bus Stop Locations
-// const apiKey = "AIzaSyCYaTzhSutXzDW8PYAKp2-3S3b9tPzOjd4";
+// const apiKey = "";
 // async function getBusStopLocation() {
-//     const data = await rp({ uri: 'https://maps.googleapis.com/maps/api/directions/json?origin=-36.848386,174.765487&destination=-36.850324,174.755381&mode=transit&key=AIzaSyCYaTzhSutXzDW8PYAKp2-3S3b9tPzOjd4', json:true })
+//     const data = await rp({ uri: 'https://maps.googleapis.com/maps/api/directions/json?origin=-36.848386,174.765487&destination=-36.850324,174.755381&mode=transit&key=', json:true })
 //     console.log(data)
 //     for (const i = 0; i < 3; i++) {
 //         data.routes[0].legs[0].steps[i]
