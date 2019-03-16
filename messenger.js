@@ -148,7 +148,15 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	  json: true,
 	})
 }
+async function sendLinkMessageStreetView(recipient, messageText, url, buttonText) {
+	if (recipient.id == '2132496623507619' || recipient.id == '1895793460527211') {
+		await sendLinkMessage(recipient, 'Get to know your bus stop!', `https://api.zappy.chat/ar`, 'Augmented Reality')
+	}
+	else {
+		await sendLinkMessage(recipient, `This is your bus stop.`, url, 'Street View')
+	}
 
+}
 async function sendDisruptionMessage(recipient, messageText, busUrl) {
 	await rp({
 	  method: 'POST',
@@ -384,7 +392,7 @@ async function processMessagingItem(messagingItem) {
 									const busLeavesIn = busStopTime.diff(moment(), 'minutes')
 									const url = getDirectionsLinkByDepTime(coordinates, homeCoords, now)
 
-									await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+									await sendLinkMessageStreetView(sender, `This is your bus stop.`, url, 'Street View')
 									await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
 								}
 								catch (error) {
@@ -408,7 +416,7 @@ async function processMessagingItem(messagingItem) {
 									const busLeavesIn = busStopTime.diff(moment(), 'minutes')
 									const url = getDirectionsLinkByDepTime(coordinates, workCoords, now)
 
-									await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+									await sendLinkMessageStreetView(sender, `This is your bus stop.`, url, 'Street View')
 									await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
 								}
 								catch (error) {
@@ -650,12 +658,7 @@ module.exports = (app) => {
 						const departureTimeCopy = departureTime.format('h:mmA')
 
 						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTimeCopy}. You'll receive the alarm 30 minutes before departure.`)
-						if (senderId == '2132496623507619' || senderId == '1895793460527211') {
-							await sendLinkMessage(sender, 'Get to know your bus stop!', `https://api.zappy.chat/ar`, 'Augmented Reality')
-						}
-						else {
-							await sendLinkMessage(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
-						}
+						await sendLinkMessageStreetView(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
 					}
 					else {
 						await sendMessage(sender, 'It looks like this route doesn\'t have a bus trip')
