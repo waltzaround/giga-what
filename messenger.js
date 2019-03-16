@@ -1,10 +1,10 @@
+const apiKey = process.env.DIRECTIONS_API_KEY;
 const rp = require('request-promise');
 const Sequelize = require('sequelize');
+const moment = require('moment-timezone')
+const _ = require('lodash')
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './database.sqlite'
-});
+const sequelize = new Sequelize({ dialect: 'sqlite', storage: './database.sqlite' });
 
 const UserSettings = sequelize.define('userSettings', {
 	senderId: {
@@ -121,9 +121,11 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	      "buttons": [
 	  	        {
 	  	          "type": "web_url",
-	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
+	  	          "url": `${process.env.MESSENGER_FRONTEND_URL}/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
+	  	          // "messenger_extensions": true,
+	  	          "webview_share_button": "hide",
 	  	        }
 	  	      ]
 	  	    }
@@ -153,6 +155,51 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	  	          url,
 	  	          "title": buttonText,
 	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        }
+	  	      ]
+	  	    }
+	  	  }
+	  	},
+	  },
+	  json: true,
+	})
+}
+
+async function sendDisruptionMessage(recipient, messageText, busUrl) {
+	await rp({
+	  method: 'POST',
+	  uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+	  body: {
+	  	"messaging_type": "RESPONSE",
+	  	"recipient": recipient,
+	  	"message": {
+	  	  "attachment": {
+	  	    "type": "template",
+	  	    "payload": {
+	  	      "template_type": "button",
+	  	      "text":  messageText,
+	  	      "buttons": [
+	  	        {
+	  	          "type": "web_url",
+	  	          url: "https://m.uber.com/ul/",
+	  	          "title": "Get Uber",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        },
+	  	        {
+	  	          "type": "web_url",
+	  	          url: "https://www.li.me/",
+	  	          "title": "Find a Lime",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
+	  	        },
+	  	        {
+	  	          "type": "web_url",
+	  	          url: busUrl,
+	  	          "title": "See next bus",
+	  	          "webview_height_ratio": "full",
+	  	          "webview_share_button": "hide",
 	  	        }
 	  	      ]
 	  	    }
@@ -164,15 +211,135 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 
 }
 
+function getDayofWekkWithTimeMoment(dayOfWeek, time) {
+	const today = moment().isoWeekday();
+	if (today <= dayOfWeek) { 
+	  return moment(time, "h:mm").isoWeekday(dayOfWeek);
+	}
+	else {
+	  return moment(time, "h:mm").add(1, 'weeks').isoWeekday(dayOfWeek);
+	}
+}
+
+function getNextArrivalTimeMoment(userSettings) {
+	if (userSettings.isMondayEnabled) {
+		return getDayofWekkWithTimeMoment(1, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isTuesdayEnabled) {
+		return getDayofWekkWithTimeMoment(2, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isWednesdayEnabled) {
+		return getDayofWekkWithTimeMoment(3, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isThursdayEnabled) {
+		return getDayofWekkWithTimeMoment(4, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isFridayEnabled) {
+		return getDayofWekkWithTimeMoment(5, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isSaturdayEnabled) {
+		return getDayofWekkWithTimeMoment(6, userSettings.officeArrivalTime)
+	}
+	else if (userSettings.isSundayEnabled) {
+		return getDayofWekkWithTimeMoment(7, userSettings.officeArrivalTime)
+	}
+}
+async function getBusRouteData(originCoords, destCoords, arrivalTime) {
+	const arrivalTimeUnix = arrivalTime.unix()
+  const data = await rp({
+  	uri: 'https://maps.googleapis.com/maps/api/directions/json',
+  	qs: {
+  		'origin': `${originCoords.lat},${originCoords.long}`,
+  		'destination': `${destCoords.lat},${destCoords.long}`,
+  		'mode': `transit`,
+  		'arrival_time': `${arrivalTimeUnix}`,
+  		'key': `${apiKey}`,
+  	},
+  	json: true,
+  })
+  return data
+}
+
+function getBusStopLocation(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  console.log('travelModeTransitStep',travelModeTransitStep)
+	  const location = travelModeTransitStep.start_location
+	  return location
+  }
+  else {
+  	return undefined
+  }
+}
+
+function getBusStopTime(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  // console.log('travelModeTransitStep',travelModeTransitStep)
+	  const departureTime = travelModeTransitStep.transit_details.departure_time
+	  if (departureTime) {
+	  	const departureTimeMoment = moment.unix(departureTime.value)
+	  	return departureTimeMoment
+	  }
+	  else {
+	  	return undefined
+	  }
+  }
+  else {
+  	return undefined
+  }
+}
+function getBusNumber(data) {
+  if (data.routes.length > 0) {
+	  const travelModeTransitStep = _.find(data.routes[0].legs[0].steps, { travel_mode: 'TRANSIT' }) 
+	  const line = travelModeTransitStep.transit_details.line
+	  if (line) {
+	  	return line.short_name
+	  }
+	  else {
+	  	return undefined
+	  }
+  }
+  else {
+  	return undefined
+  }
+
+}
+
+function getCommuteDepartureTime(data) {
+  if (data.routes.length > 0) {
+  	const departureTime = data.routes[0].legs[0].departure_time
+  	if (departureTime) {
+  		const departureTimeMoment = moment.unix(departureTime.value)
+  		return departureTimeMoment  	
+  	}
+  	else {
+  		return undefined
+  	}  	
+  }
+  else {
+  	return undefined
+  }
+}
+
 function getStreetViewLink(coordinates) {
-	const busStopLat = -36.8555378;
-	const BusStopLong = 174.8238183;
+	const busStopLat = coordinates.lat;
+	const BusStopLong = coordinates.lng;
 	const streetView = "http://maps.google.com/maps?q=&layer=c&cbll=" + busStopLat + "," + BusStopLong;
+	console.log('streetView',streetView)
 	return streetView
 }
 
-function thirtyMinsBefore() {
+function getDirectionsLink(originCoords, destCoords, arrivalTimeMoment) {
+	const originLat = originCoords.lat;
+	const originLong = originCoords.long;
+	const destLat = destCoords.lat
+	const destLong = destCoords.long
 
+	const arrivalTimeUnix = moment.tz(arrivalTimeMoment.format('YYYY-MM-DDTHH:mm:ss'), 'utc').unix()
+	const directionsWork = `https://www.google.com/maps/dir/${originLat},${originLong}/${destLat},${destLong}/data=!3m1!4b1!4m6!4m5!2m3!6e1!7e2!8j${arrivalTimeUnix}!3e3`
+
+	return directionsWork
 }
 
 async function processMessagingItem(messagingItem) {
@@ -182,7 +349,6 @@ async function processMessagingItem(messagingItem) {
 
 	if (message) { // usually a location attachment
 		const { mid, seq, attachments } = message
-		console.log('attachments', attachments)
 		if (attachments) {
 			for (let i = 0; i < attachments.length; i++) {
 				const attachment = attachments[i]
@@ -190,8 +356,7 @@ async function processMessagingItem(messagingItem) {
 					case 'location': 
 						const attachmentPayload = attachment.payload
 						const { coordinates } = attachmentPayload
-						console.log('coordinates', coordinates)
-						let userSettings = await UserSettings.findOne({ senderId })
+						let userSettings = await UserSettings.findOne({ where: { senderId } })
 						if (userSettings) {
 							if (userSettings.homeLat && userSettings.homeLong) {
 								userSettings.workLat = coordinates.lat
@@ -214,7 +379,6 @@ async function processMessagingItem(messagingItem) {
 							})
 							await sendWorkPrompt(sender, "Next, where do you work or study?")
 						}
-						console.log('userSettings', userSettings)
 						break
 				}
 			}			
@@ -231,14 +395,23 @@ async function processMessagingItem(messagingItem) {
 			switch (postbackPayload) {
 				case 'SETTINGS_PAYLOAD':
 				case 'GET_STARTED_PAYLOAD':
-					let userSettings = await UserSettings.findOne({ senderId })
+					let userSettings = await UserSettings.findOne({ where: { senderId } })
 					if (userSettings) {
 						userSettings.workLat = 0
 						userSettings.workLong = 0
 						userSettings.homeLat = 0
 						userSettings.homeLong = 0
+						await userSettings.save()
 					}
-					await userSettings.save()
+					else {
+						userSettings = await UserSettings.create({
+							senderId,
+							workLat: 0,
+							workLong: 0,
+							homeLat: 0,
+							homeLong: 0,
+						})
+					}
 
 					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
 					await sendHomePrompt(sender, "First of all, where do you live?")
@@ -258,6 +431,7 @@ async function processMessagingItem(messagingItem) {
 
 
 module.exports = (app) => {
+
 	app.get('/messenger', (req, res) => {
 		const mode = req.query['hub.mode']
 		const verify_token = req.query['hub.verify_token']
@@ -268,7 +442,7 @@ module.exports = (app) => {
 	    res.status(200)
 	    res.send(challenge)
 	  } else {
-	    console.error('[WEBHOOK] Failed validation');
+	    console.log('[WEBHOOK] Failed validation');
 	    res.status(200)
 	    res.send('')
 	  }
@@ -282,17 +456,82 @@ module.exports = (app) => {
 			const { messaging } = entryItem
 			for (let j = 0; j < messaging .length; j++) {
 				const messagingItem = messaging[j]
-				console.log('messagingItem',messagingItem)
 				processMessagingItem(messagingItem)
 			}
-			console.log('entryItem',entryItem)
 		}
+		res.send({ success: true })
+	})
+
+	app.get('/minute-tick', async (req, res) => {
+		const { nowTime } = req.query
+		const nowtimeMoment = nowTime ? moment(nowTime) : moment()
+		const userSettingsEntries = await UserSettings.findAll({})
+	
+		console.log('nowtimeMoment',nowtimeMoment.format())
+		for (var i = 0; i < userSettingsEntries.length; i++) {
+			const userSettings = userSettingsEntries[i]
+
+			const senderId = userSettings.senderId
+			const sender = { id: senderId }
+			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+			const arrivalTime = getNextArrivalTimeMoment(userSettings)			
+			if (arrivalTime) {
+				console.log('senderId', senderId, 'arrivalTime.format()',arrivalTime.format())
+				const url = getDirectionsLink(homeCoords, workCoords, arrivalTime)
+			  const busStopData = await getBusRouteData(homeCoords, workCoords, arrivalTime)
+				const departureTime = getCommuteDepartureTime(busStopData)
+
+				if (departureTime) {
+					const busStopTime = getBusStopTime(busStopData)
+					const busNumber = getBusNumber(busStopData)
+					const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+
+					console.log('senderId', senderId, 'departureTime.format()', departureTime.format())
+
+					if (Math.abs(departureTime.clone().subtract(35, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
+						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 30 minutes`, url, 'Where to go')
+					}
+					else if (Math.abs(departureTime.clone().subtract(15, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
+						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus will arrive in ${busLeavesIn} minutes (${busNumber})`, url, 'Where to go')
+					}					
+				}
+				else {
+					// trip is too short.
+				}
+			}
+			else {
+				// the notifications is not set up proerply
+			}
+		};
 
 		res.send({ success: true })
 	})
 
-	app.get('/user-settings/', (req, res) => {
-	  res.send({ success: false, error: 'This is a PUT route, not GET' })
+	app.get('/disruption-alert/', async (req, res) => {
+		const { query } = req
+		const { senderId, busNumber, arrivalTime } = query
+
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
+		const sender = { id: senderId }
+		const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+		const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+
+		const uberArrivalTimeCopy = moment(arrivalTime).add(06, 'minutes').format("h:mmA")
+		const limeArrivalTimeCopy = moment(arrivalTime).add(16, 'minutes').format("h:mmA")
+		const carArrivalTimeCopy = moment(arrivalTime).add(04, 'minutes').format("h:mmA")
+		const url = getDirectionsLink(homeCoords, workCoords, moment(arrivalTime).add(30, 'minutes'))
+
+		await sendDisruptionMessage(sender, `Something has happened to your bus (${busNumber}). The next one is in 30 minutes. \n\nAlternatively you can take:\n\nan Uber - arrive by ${uberArrivalTimeCopy}\na Lime - arrive by ${limeArrivalTimeCopy}\na car - arrive by ${carArrivalTimeCopy}`, url)
+		res.send({success:true})
+
+	})
+
+	app.get('/user-settings/', async (req, res) => {
+		const { query } = req
+		const { senderId } = query
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
+	  res.send({ success: true, userSettings })
 	})
 
 	app.put('/user-settings/', async (req, res) => {
@@ -309,8 +548,9 @@ module.exports = (app) => {
 			isSundayEnabled,
 		} = body.userSettings
 
-		let userSettings = await UserSettings.findOne({ senderId })
+		let userSettings = await UserSettings.findOne({ where: { senderId } })
 		if (userSettings) {
+			console.log('userSettings', userSettings.get({ plain: true }))
 
 			userSettings.officeArrivalTime = officeArrivalTime
 			userSettings.isMondayEnabled = isMondayEnabled
@@ -322,25 +562,38 @@ module.exports = (app) => {
 			userSettings.isSundayEnabled = isSundayEnabled
 			await userSettings.save()
 
-			await sendMessage({ id: senderId }, 'Cool! I will help you get used to your new commute. You\'ll receive the alarm 30 minutes before departure.')
-			const busStopCoordinates = {}
-			await sendLinkMessage({ id: senderId }, 'Get to know your bus stop!', getStreetViewLink(busStopCoordinates), 'Street View')
-			
+			const sender = { id: senderId }
+			const homeCoords = { lat: userSettings.homeLat, long: userSettings.homeLong };
+			const workCoords = { lat: userSettings.workLat, long: userSettings.workLong };
+			const arrivalTime = getNextArrivalTimeMoment(userSettings)
+			if (arrivalTime) {
+				try {
+				  const busStopData = await getBusRouteData(homeCoords, workCoords, arrivalTime)
+					const departureTime = getCommuteDepartureTime(busStopData)
+					if (departureTime) {
+						const busStopCoordinates = getBusStopLocation(busStopData)
+						const streetViewLink = getStreetViewLink(busStopCoordinates)
+						const departureTimeCopy = departureTime.format('h:mmA')
 
-			// if (userSettings.homeLat && userSettings.homeLong) {
-			// 	userSettings.workLat = coordinates.lat
-			// 	userSettings.workLong = coordinates.long
-			// 	await userSettings.save()
-			// 	await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
-			// }
-			// else {
-			// 	userSettings.homeLat = coordinates.lat
-			// 	userSettings.homeLong = coordinates.long
-			// 	await userSettings.save()
-			// 	await sendWorkPrompt(sender, "Next, where do you work or study?")
-			// }
+						await sendMessage(sender, `Cool! I will help you get used to your new commute. Your departure time is ${departureTimeCopy}. You'll receive the alarm 30 minutes before departure.`)
+						await sendLinkMessage(sender, 'Get to know your bus stop!', streetViewLink, 'Street View')
+					}
+					else {
+						await sendMessage(sender, 'It looks like this route doesn\'t have a bus trip')
+					}
+				}
+				catch (error) {
+					console.log('error',error)
+					await sendMessage(sender, 'No routes for your bus found :-(. Try setting your settings again.')
+				}
+			}
+			else {
+				await sendWhenPrompt(sender, "You haven't selected the days you want to go to work.")
+			}
 		}
-
+		else {
+			await sendMessage(sender, 'Work and home locations are not set. Try setting your settings again.')
+		}
 
 	  res.send({ success: true, userSettings })
 	})
@@ -365,16 +618,16 @@ module.exports = (app) => {
 	  	    "locale":"default",
 	  	    "composer_input_disabled": true,
 	  	    "call_to_actions":[
-	  	      {
-	            "title":"Go home",
-	            "type":"postback",
-	            "payload":"GO_HOME_PAYLOAD"
-	          },
-	  	      {
-	            "title":"Go to work",
-	            "type":"postback",
-	            "payload":"GO_TO_WORK_PAYLOAD"
-	          },
+	  	      // {
+	         //    "title":"Go home",
+	         //    "type":"postback",
+	         //    "payload":"GO_HOME_PAYLOAD"
+	         //  },
+	  	      // {
+	         //    "title":"Go to work",
+	         //    "type":"postback",
+	         //    "payload":"GO_TO_WORK_PAYLOAD"
+	         //  },
 	  	      {
 	            "title":"Settings",
 	            "type":"postback",
