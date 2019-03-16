@@ -375,16 +375,22 @@ async function processMessagingItem(messagingItem) {
 								await userSettings.save()
 
 								const now = moment()
-								const busStopData = await getBusRouteDataByDepTime(coordinates, homeCoords, now)
-								const busNumber = getBusNumber(busStopData)
-								const busStopCoordinates = getBusStopLocation(busStopData)
-								const streetViewLink = getStreetViewLink(busStopCoordinates)
-								const busStopTime = getBusStopTime(busStopData)
-								const busLeavesIn = busStopTime.diff(moment(), 'minutes')
-								const url = getDirectionsLinkByDepTime(coordinates, homeCoords, now)
+								try {
+									const busStopData = await getBusRouteDataByDepTime(coordinates, homeCoords, now)
+									const busNumber = getBusNumber(busStopData)
+									const busStopCoordinates = getBusStopLocation(busStopData)
+									const streetViewLink = getStreetViewLink(busStopCoordinates)
+									const busStopTime = getBusStopTime(busStopData)
+									const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+									const url = getDirectionsLinkByDepTime(coordinates, homeCoords, now)
 
-								await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
-								await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+									await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+									await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+								}
+								catch (error) {
+									console.log('error',error)
+									await sendMessage(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
+								}
 
 								
 							}
@@ -393,16 +399,22 @@ async function processMessagingItem(messagingItem) {
 								await userSettings.save()
 
 								const now = moment()
-								const busStopData = await getBusRouteDataByDepTime(coordinates, workCoords, now)
-								const busNumber = getBusNumber(busStopData)
-								const busStopCoordinates = getBusStopLocation(busStopData)
-								const streetViewLink = getStreetViewLink(busStopCoordinates)
-								const busStopTime = getBusStopTime(busStopData)
-								const busLeavesIn = busStopTime.diff(moment(), 'minutes')
-								const url = getDirectionsLinkByDepTime(coordinates, workCoords, now)
+								try {
+									const busStopData = await getBusRouteDataByDepTime(coordinates, workCoords, now)
+									const busNumber = getBusNumber(busStopData)
+									const busStopCoordinates = getBusStopLocation(busStopData)
+									const streetViewLink = getStreetViewLink(busStopCoordinates)
+									const busStopTime = getBusStopTime(busStopData)
+									const busLeavesIn = busStopTime.diff(moment(), 'minutes')
+									const url = getDirectionsLinkByDepTime(coordinates, workCoords, now)
 
-								await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
-								await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+									await sendLinkMessage(sender, `This is your bus stop.`, url, 'Street View')
+									await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+								}
+								catch (error) {
+									console.log('error',error)
+									await sendMessage(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
+								}
 								
 							}
 							else if (userSettings.homeLat && userSettings.homeLong) {
