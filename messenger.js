@@ -121,7 +121,7 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	      "buttons": [
 	  	        {
 	  	          "type": "web_url",
-	  	          "url": `https://0b1bb0ec.ngrok.io/?senderId=${recipient.id}`,
+	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
 	  	        }
@@ -229,6 +229,7 @@ async function processMessagingItem(messagingItem) {
 			const postbackTitle = postback.title
 
 			switch (postbackPayload) {
+				case 'SETTINGS_PAYLOAD':
 				case 'GET_STARTED_PAYLOAD':
 					let userSettings = await UserSettings.findOne({ senderId })
 					if (userSettings) {
@@ -242,6 +243,10 @@ async function processMessagingItem(messagingItem) {
 					await sendMessage(sender, "Hey there! I can make getting used to a new bus route easier!")
 					await sendHomePrompt(sender, "First of all, where do you live?")
 					break
+				case 'GO_HOME_PAYLOAD':
+					break;
+				case 'GO_TO_WORK_PAYLOAD':
+					break;
 			}
 		}
 		else {
@@ -355,6 +360,29 @@ module.exports = (app) => {
 	  	    "text": "Helps you get used to your bus routes",
 	  	  }
 	  	],
+	  	"persistent_menu":[
+	  	  {
+	  	    "locale":"default",
+	  	    "composer_input_disabled": true,
+	  	    "call_to_actions":[
+	  	      {
+	            "title":"Go home",
+	            "type":"postback",
+	            "payload":"GO_HOME_PAYLOAD"
+	          },
+	  	      {
+	            "title":"Go to work",
+	            "type":"postback",
+	            "payload":"GO_TO_WORK_PAYLOAD"
+	          },
+	  	      {
+	            "title":"Settings",
+	            "type":"postback",
+	            "payload":"SETTINGS_PAYLOAD"
+	          }
+	  	    ]
+	  	  }
+	  	]
 	  },
 	  json: true,
 	})
