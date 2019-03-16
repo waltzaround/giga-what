@@ -121,7 +121,7 @@ async function sendWhenPrompt(recipient, messageText) {
 	  	      "buttons": [
 	  	        {
 	  	          "type": "web_url",
-	  	          "url": `https://a59153f1.ngrok.io/?senderId=${recipient.id}`,
+	  	          "url": `https://0b1bb0ec.ngrok.io/?senderId=${recipient.id}`,
 	  	          "title": "Select",
 	  	          "webview_height_ratio": "Compact",
 	  	        }
@@ -151,7 +151,7 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	  	        {
 	  	          "type": "web_url",
 	  	          url,
-	  	          "title": "Select",
+	  	          "title": buttonText,
 	  	          "webview_height_ratio": "full",
 	  	        }
 	  	      ]
@@ -165,8 +165,8 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 }
 
 function getStreetViewLink(coordinates) {
-	const busStopLat = -36.846178;
-	const BusStopLong = 174.766155;
+	const busStopLat = -36.8555378;
+	const BusStopLong = 174.8238183;
 	const streetView = "http://maps.google.com/maps?q=&layer=c&cbll=" + busStopLat + "," + BusStopLong;
 	return streetView
 }
@@ -183,41 +183,45 @@ async function processMessagingItem(messagingItem) {
 	if (message) { // usually a location attachment
 		const { mid, seq, attachments } = message
 		console.log('attachments', attachments)
-		for (let i = 0; i < attachments.length; i++) {
-			const attachment = attachments[i]
-			switch (attachment.type) {
-				case 'location': 
-					const attachmentPayload = attachment.payload
-					const { coordinates } = attachmentPayload
-					console.log('coordinates', coordinates)
-					let userSettings = await UserSettings.findOne({ senderId })
-					if (userSettings) {
-						if (userSettings.homeLat && userSettings.homeLong) {
-							userSettings.workLat = coordinates.lat
-							userSettings.workLong = coordinates.long
-							await userSettings.save()
-							await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
+		if (attachments) {
+			for (let i = 0; i < attachments.length; i++) {
+				const attachment = attachments[i]
+				switch (attachment.type) {
+					case 'location': 
+						const attachmentPayload = attachment.payload
+						const { coordinates } = attachmentPayload
+						console.log('coordinates', coordinates)
+						let userSettings = await UserSettings.findOne({ senderId })
+						if (userSettings) {
+							if (userSettings.homeLat && userSettings.homeLong) {
+								userSettings.workLat = coordinates.lat
+								userSettings.workLong = coordinates.long
+								await userSettings.save()
+								await sendWhenPrompt(sender, "Awesome, when you want to be at office at? And at what says you want to use public transit?")
+							}
+							else {
+								userSettings.homeLat = coordinates.lat
+								userSettings.homeLong = coordinates.long
+								await userSettings.save()
+								await sendWorkPrompt(sender, "Next, where do you work or study?")
+							}
 						}
 						else {
-							userSettings.homeLat = coordinates.lat
-							userSettings.homeLong = coordinates.long
-							await userSettings.save()
+							userSettings = await UserSettings.create({
+								senderId,
+								homeLat: coordinates.lat,
+								homeLong: coordinates.long,
+							})
 							await sendWorkPrompt(sender, "Next, where do you work or study?")
 						}
-					}
-					else {
-						userSettings = await UserSettings.create({
-							senderId,
-							homeLat: coordinates.lat,
-							homeLong: coordinates.long,
-						})
-						await sendWorkPrompt(sender, "Next, where do you work or study?")
-					}
-					console.log('userSettings', userSettings)
-					break
-			}
+						console.log('userSettings', userSettings)
+						break
+				}
+			}			
 		}
-
+		else {
+			// skip
+		}
 	}
 	else { // usually a postback message
 		if (postback) {
