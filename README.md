@@ -1,2 +1,2 @@
 # GigaWhat &mdash; chatbot api
-hackathon repo for Zappy chatbot api
+Hackathon repo for Zappy chatbot api
