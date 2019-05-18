@@ -514,7 +514,7 @@ async function processMessagingItem(messagingItem) {
 									const url = getDirectionsLinkByDepTime(coordinates, workCoords, now)
 
 									await sendLinkMessageStreetView(sender, `This is your bus stop.`, url, 'Street View')
-									await sendLinkMessage(sender, `The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 5 min.`, url, 'Where to go')
+									await sendLinkMessage(sender, `The next bus (${busNumber}) will arrive in ${busLeavesIn} minutes. Leave in 5 min.`, url, 'Where to go')
 								}
 								catch (error) {
 									console.log('error',error)
@@ -635,10 +635,10 @@ module.exports = (app) => {
 					console.log('senderId', senderId, 'departureTime.format()', departureTime.format())
 
 					if (Math.abs(departureTime.clone().subtract(35, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
-						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus will arrive in ${busLeavesIn} minutes (${busNumber}). Leave in 30 minutes`, url, 'Where to go')
+						await sendLinkMessage(sender, `You should get ready to leave for work! The next bus (${busNumber}) will arrive in ${busLeavesIn} minutes. Leave in 30 minutes`, url, 'Where to go')
 					}
 					else if (Math.abs(departureTime.clone().subtract(15, 'minutes').diff(nowtimeMoment.clone(), 'minutes', true)) < 1) {
-						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus will arrive in ${busLeavesIn} minutes (${busNumber})`, url, 'Where to go')
+						await sendLinkMessage(sender, `Heads up, leave the house in 10 mins! The bus (${busNumber}) will arrive in ${busLeavesIn} minutes.`, url, 'Where to go')
 					}					
 				}
 				else {
