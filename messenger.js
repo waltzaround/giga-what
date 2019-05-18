@@ -396,6 +396,70 @@ function getDirectionsLinkByDepTime(originCoords, destCoords, depTimeMoment) {
 	return directionsWork
 }
 
+async function resetSettings(sender, userSettings) {
+	if (userSettings) {
+		userSettings.workLat = 0
+		userSettings.workLong = 0
+		userSettings.homeLat = 0
+		userSettings.homeLong = 0
+		userSettings.officeArrivalTime = null
+		userSettings.isMondayEnabled = false
+		userSettings.isTuesdayEnabled = false
+		userSettings.isWednesdayEnabled = false
+		userSettings.isThursdayEnabled = false
+		userSettings.isFridayEnabled = false
+		userSettings.isSaturdayEnabled = false
+		userSettings.isSundayEnabled = false
+		userSettings.currentLocationIntent = null
+		await userSettings.save()
+	}
+	else {
+		userSettings = await UserSettings.create({
+			senderId,
+			workLat: 0,
+			workLong: 0,
+			homeLat: 0,
+			homeLong: 0,
+			officeArrivalTime: null,
+			isMondayEnabled: false,
+			isTuesdayEnabled: false,
+			isWednesdayEnabled: false,
+			isThursdayEnabled: false,
+			isFridayEnabled: false,
+			isSaturdayEnabled: false,
+			isSundayEnabled: false,
+			currentLocationIntent: null,
+		})
+	}
+
+	await sendMessage(sender, "Kia ora! I can make getting used to a new bus route easier!")
+	await sendCurrentLocationPrompt(sender, "First of all, where do you live?")
+}
+
+async function goToHome(sender, userSettings) {
+	if (userSettings && userSettings.workLat && userSettings.workLong) {
+		userSettings.currentLocationIntent = 'GO_HOME'	
+		await userSettings.save()
+		await sendCurrentLocationPrompt(sender, "Where you are right now?")
+	}
+	else {
+		await sendMessage(sender, 'Please finish setting up before using Zappy.')
+		await resetSettings(sender, userSettings)
+	}
+}
+
+async function goToWork(sender, userSettings) {
+	if (userSettings && userSettings.homeLat && userSettings.homeLong) {
+		userSettings.currentLocationIntent = 'GO_TO_WORK'	
+		await userSettings.save()
+		await sendCurrentLocationPrompt(sender, "Where you are right now?")						
+	}
+	else {
+		await sendMessage(sender, 'Please finish setting up before using Zappy.')
+		await resetSettings(sender, userSettings)
+	}	
+}
+
 async function processMessagingItem(messagingItem) {
 	const { recipient, timestamp, sender, postback, message } = messagingItem
 	const recipientId = recipient.id
@@ -497,69 +561,17 @@ async function processMessagingItem(messagingItem) {
 	}
 	else { // usually a postback message
 		if (postback) {
-			const postbackPayload = postback.payload
-			const postbackTitle = postback.title
-
-			switch (postbackPayload) {
+			const { payload } = postback
+			switch (payload) {
 				case 'SETTINGS_PAYLOAD':
 				case 'GET_STARTED_PAYLOAD':
-					if (userSettings) {
-						userSettings.workLat = 0
-						userSettings.workLong = 0
-						userSettings.homeLat = 0
-						userSettings.homeLong = 0
-						userSettings.officeArrivalTime = null
-						userSettings.isMondayEnabled = false
-						userSettings.isTuesdayEnabled = false
-						userSettings.isWednesdayEnabled = false
-						userSettings.isThursdayEnabled = false
-						userSettings.isFridayEnabled = false
-						userSettings.isSaturdayEnabled = false
-						userSettings.isSundayEnabled = false
-						userSettings.currentLocationIntent = null
-						await userSettings.save()
-					}
-					else {
-						userSettings = await UserSettings.create({
-							senderId,
-							workLat: 0,
-							workLong: 0,
-							homeLat: 0,
-							homeLong: 0,
-							officeArrivalTime: null,
-							isMondayEnabled: false,
-							isTuesdayEnabled: false,
-							isWednesdayEnabled: false,
-							isThursdayEnabled: false,
-							isFridayEnabled: false,
-							isSaturdayEnabled: false,
-							isSundayEnabled: false,
-							currentLocationIntent: null,
-						})
-					}
-
-					await sendMessage(sender, "Kia ora! I can make getting used to a new bus route easier!")
-					await sendCurrentLocationPrompt(sender, "First of all, where do you live?")
+					await resetSettings(sender, userSettings)
 					break
 				case 'GO_HOME_PAYLOAD':
-					if (userSettings && userSettings.workLat && userSettings.workLong) {
-						userSettings.currentLocationIntent = 'GO_HOME'	
-						await userSettings.save()
-						await sendCurrentLocationPrompt(sender, "Where you are right now?")
-					}
-					else {
-						await sendMessage(sender, 'Please finish setting up before using Zappy.')
-					}
+					await goToHome(sender, userSettings)
 					break;
 				case 'GO_TO_WORK_PAYLOAD':
-					if (userSettings && userSettings.homeLat && userSettings.homeLong) {
-						userSettings.currentLocationIntent = 'GO_TO_WORK'	
-						await userSettings.save()
-						await sendCurrentLocationPrompt(sender, "Where you are right now?")						
-					}
-					else {
-						await sendMessage(sender, 'Please finish setting up before using Zappy.')
-					}
+					await goToWork(sender, userSettings)
 					break;
 			}
 		}
