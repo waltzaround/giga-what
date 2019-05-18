@@ -499,7 +499,6 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessage(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
 									await sendMessageNoRoutesFoundWithLinks(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
 								}
 
@@ -525,7 +524,6 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessage(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
 									await sendMessageNoRoutesFoundWithLinks(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
 								}
 								
