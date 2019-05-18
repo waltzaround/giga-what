@@ -152,7 +152,8 @@ async function sendLinkMessageStreetView(recipient, messageText, url, buttonText
 
 }
 
-async function sendMessageNoRoutesFoundWithLinks(recipient, messageText) {
+async function sendMessageNoRoutesFoundWithLinks(recipient) {
+	var messageText = 'No bus service for your route. Try Uber or Lime?';
 	await rp({
 		method: 'POST',
 		uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
@@ -494,7 +495,7 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try Uber or Lime?')
+									await sendMessageNoRoutesFoundWithLinks(sender)
 								}
 							
 							}
@@ -518,7 +519,7 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try Uber or Lime?')
+									await sendMessageNoRoutesFoundWithLinks(sender)
 								}
 								
 							}
@@ -729,7 +730,7 @@ module.exports = (app) => {
 				}
 				catch (error) {
 					console.log('error',error)
-					await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try setting your settings again.')
+					await sendMessage(sender, 'No bus service for your route. Try setting your settings again.')
 				}
 			}
 			else {
