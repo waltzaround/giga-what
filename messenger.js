@@ -1,4 +1,3 @@
-const apiKey = process.env.DIRECTIONS_API_KEY;
 const rp = require('request-promise');
 const Sequelize = require('sequelize');
 const moment = require('moment-timezone')
@@ -244,7 +243,7 @@ async function getBusRouteData(originCoords, destCoords, arrivalTime) {
   		'destination': `${destCoords.lat},${destCoords.long}`,
   		'mode': `transit`,
   		'arrival_time': `${arrivalTimeUnix}`,
-  		'key': `${apiKey}`,
+  		'key': `${process.env.DIRECTIONS_API_KEY}`,
   	},
   	json: true,
   })
@@ -259,7 +258,7 @@ async function getBusRouteDataByDepTime(originCoords, destCoords, departureTime)
   		'destination': `${destCoords.lat},${destCoords.long}`,
   		'mode': `transit`,
   		'departure_time': `${departureTimeUnix}`,
-  		'key': `${apiKey}`,
+  		'key': `${process.env.DIRECTIONS_API_KEY}`,
   	},
   	json: true,
   })
@@ -431,7 +430,7 @@ async function processMessagingItem(messagingItem) {
 								userSettings.workLat = coordinates.lat
 								userSettings.workLong = coordinates.long
 								await userSettings.save()
-								await sendWhenPrompt(sender, "Awesome, when do you want to in the office by? And on which days do you want to use public transit?")
+								await sendWhenPrompt(sender, "Awesome, when do you want to be in the office by? And on which days do you want to use public transit?")
 							}
 							else {
 								userSettings.homeLat = coordinates.lat
