@@ -177,13 +177,6 @@ async function sendMessageNoRoutesFoundWithLinks(recipient, messageText) {
 								"title": "Get Uber",
 								"webview_height_ratio": "full",
 								"webview_share_button": "hide",
-							},
-							{
-								"type": "web_url",
-								url: "https://www.li.me/",
-								"title": "Find a Lime",
-								"webview_height_ratio": "full",
-								"webview_share_button": "hide",
 							}
 						]
 					}
