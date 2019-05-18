@@ -148,12 +148,7 @@ async function sendLinkMessage(recipient, messageText, url, buttonText) {
 	})
 }
 async function sendLinkMessageStreetView(recipient, messageText, url, buttonText) {
-	if (recipient.id == '2132496623507619' || recipient.id == '1895793460527211') {
-		await sendLinkMessage(recipient, 'Get to know your bus stop!', `https://api.zappy.chat/ar`, 'Augmented Reality')
-	}
-	else {
-		await sendLinkMessage(recipient, `This is your bus stop.`, url, 'Street View')
-	}
+	await sendLinkMessage(recipient, `This is your bus stop.`, url, 'Street View')
 
 }
 
