@@ -499,10 +499,9 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessageNoRoutesFoundWithLinks(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
+									await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try Uber or Lime?')
 								}
-
-								
+							
 							}
 							else if (userSettings.currentLocationIntent == 'GO_TO_WORK') {
 								userSettings.currentLocationIntent = ""
@@ -524,7 +523,7 @@ async function processMessagingItem(messagingItem) {
 								}
 								catch (error) {
 									console.log('error',error)
-									await sendMessageNoRoutesFoundWithLinks(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
+									await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try Uber or Lime?')
 								}
 								
 							}
@@ -735,7 +734,7 @@ module.exports = (app) => {
 				}
 				catch (error) {
 					console.log('error',error)
-					await sendMessage(sender, 'No routes for your bus found :-(. Try setting your settings again.')
+					await sendMessageNoRoutesFoundWithLinks(sender, 'No bus service for your route. Try setting your settings again.')
 				}
 			}
 			else {
