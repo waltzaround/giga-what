@@ -156,6 +156,44 @@ async function sendLinkMessageStreetView(recipient, messageText, url, buttonText
 	}
 
 }
+
+async function sendMessageNoRoutesFoundWithLinks(recipient, messageText) {
+	await rp({
+		method: 'POST',
+		uri: `https://graph.facebook.com/v2.6/me/messages?access_token=${process.env.PAGE_ACCESS_TOKEN}`,
+		body: {
+			"messaging_type": "RESPONSE",
+			"recipient": recipient,
+			"message": {
+				"attachment": {
+					"type": "template",
+					"payload": {
+						"template_type": "button",
+						"text": messageText,
+						"buttons": [
+							{
+								"type": "web_url",
+								url: "https://m.uber.com/ul/",
+								"title": "Get Uber",
+								"webview_height_ratio": "full",
+								"webview_share_button": "hide",
+							},
+							{
+								"type": "web_url",
+								url: "https://www.li.me/",
+								"title": "Find a Lime",
+								"webview_height_ratio": "full",
+								"webview_share_button": "hide",
+							}
+						]
+					}
+				}
+			},
+		},
+		json: true,
+	})
+}
+
 async function sendDisruptionMessage(recipient, messageText, busUrl) {
 	await rp({
 	  method: 'POST',
@@ -398,6 +436,7 @@ async function processMessagingItem(messagingItem) {
 								catch (error) {
 									console.log('error',error)
 									await sendMessage(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
+									await sendMessageNoRoutesFoundWithLinks(sender, 'No routes for your bus found :-(. Try Uber or Lime?')
 								}
 
 								
