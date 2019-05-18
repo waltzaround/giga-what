@@ -507,6 +507,15 @@ async function processMessagingItem(messagingItem) {
 						userSettings.workLong = 0
 						userSettings.homeLat = 0
 						userSettings.homeLong = 0
+						userSettings.officeArrivalTime = null
+						userSettings.isMondayEnabled = false
+						userSettings.isTuesdayEnabled = false
+						userSettings.isWednesdayEnabled = false
+						userSettings.isThursdayEnabled = false
+						userSettings.isFridayEnabled = false
+						userSettings.isSaturdayEnabled = false
+						userSettings.isSundayEnabled = false
+						userSettings.currentLocationIntent = null
 						await userSettings.save()
 					}
 					else {
@@ -516,6 +525,15 @@ async function processMessagingItem(messagingItem) {
 							workLong: 0,
 							homeLat: 0,
 							homeLong: 0,
+							officeArrivalTime: null,
+							isMondayEnabled: false,
+							isTuesdayEnabled: false,
+							isWednesdayEnabled: false,
+							isThursdayEnabled: false,
+							isFridayEnabled: false,
+							isSaturdayEnabled: false,
+							isSundayEnabled: false,
+							currentLocationIntent: null,
 						})
 					}
 
