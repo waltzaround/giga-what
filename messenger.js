@@ -180,7 +180,7 @@ async function sendMessageNoRoutesFoundWithLinks(recipient, messageText) {
 							},
 							{
 								"type": "web_url",
-								url: "https://www.li.me/",
+								url: "https://www.limebike.com/",
 								"title": "Find a Lime",
 								"webview_height_ratio": "full",
 								"webview_share_button": "hide",
@@ -217,7 +217,7 @@ async function sendDisruptionMessage(recipient, messageText, busUrl) {
 	  	        },
 	  	        {
 	  	          "type": "web_url",
-	  	          url: "https://www.li.me/",
+	  	          url: "https://www.limebike.com/",
 	  	          "title": "Find a Lime",
 	  	          "webview_height_ratio": "full",
 	  	          "webview_share_button": "hide",
