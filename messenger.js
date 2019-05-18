@@ -385,6 +385,7 @@ async function processMessagingItem(messagingItem) {
 								const now = moment()
 								try {
 									const busStopData = await getBusRouteDataByDepTime(coordinates, homeCoords, now)
+									console.log('busStopData',busStopData)
 									const busNumber = getBusNumber(busStopData)
 									const busStopCoordinates = getBusStopLocation(busStopData)
 									const streetViewLink = getStreetViewLink(busStopCoordinates)
@@ -409,6 +410,7 @@ async function processMessagingItem(messagingItem) {
 								const now = moment()
 								try {
 									const busStopData = await getBusRouteDataByDepTime(coordinates, workCoords, now)
+									console.log('busStopData',busStopData)
 									const busNumber = getBusNumber(busStopData)
 									const busStopCoordinates = getBusStopLocation(busStopData)
 									const streetViewLink = getStreetViewLink(busStopCoordinates)
