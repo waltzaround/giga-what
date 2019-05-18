@@ -542,23 +542,23 @@ async function processMessagingItem(messagingItem) {
 					await sendCurrentLocationPrompt(sender, "First of all, where do you live?")
 					break
 				case 'GO_HOME_PAYLOAD':
-					if (userSettings) {
-						userSettings.currentLocationIntent = 'GO_HOME'
+					if (userSettings && userSettings.workLat && userSettings.workLong) {
+						userSettings.currentLocationIntent = 'GO_HOME'	
 						await userSettings.save()
 						await sendCurrentLocationPrompt(sender, "Where you are right now?")
 					}
 					else {
-						await sendMessage(sender, 'Please finish initial settings to use Go Home and Go to work.')
+						await sendMessage(sender, 'Please finish setting up before using Zappy.')
 					}
 					break;
 				case 'GO_TO_WORK_PAYLOAD':
-					if (userSettings) {
-						userSettings.currentLocationIntent = 'GO_TO_WORK'
+					if (userSettings && userSettings.homeLat && userSettings.homeLong) {
+						userSettings.currentLocationIntent = 'GO_TO_WORK'	
 						await userSettings.save()
-						await sendCurrentLocationPrompt(sender, "Where you are right now?")
+						await sendCurrentLocationPrompt(sender, "Where you are right now?")						
 					}
 					else {
-						await sendMessage(sender, 'Please finish initial settings to use Go Home and Go to work.')
+						await sendMessage(sender, 'Please finish setting up before using Zappy.')
 					}
 					break;
 			}
